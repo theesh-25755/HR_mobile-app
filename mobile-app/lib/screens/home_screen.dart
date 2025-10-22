@@ -1,21 +1,53 @@
 // lib/screens/home_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Make sure this import is here
-import 'package:mobile_app/providers/auth_provider.dart'; // Make sure this import is here
-import 'package:mobile_app/widgets/drawer_menu.dart'; // Import our new drawer
+import 'package:provider/provider.dart';
+import 'package:mobile_app/providers/auth_provider.dart';
+import 'package:mobile_app/providers/leave_provider.dart';
+import 'package:mobile_app/providers/notification_provider.dart';
+import 'package:mobile_app/widgets/drawer_menu.dart';
 
-class HomeScreen extends StatelessWidget {
+// --- CHANGED TO STATEFULWIDGET ---
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // --- NEW CODE ---
+  // This function fetches all the dashboard data at once
+  @override
+  void initState() {
+    super.initState();
+    // Use addPostFrameCallback to run this after the build is complete
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Get the token from AuthProvider
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
+      if (token != null) {
+        // Fetch data from both providers
+        Provider.of<LeaveProvider>(context, listen: false).fetchMyLeaves(token);
+        Provider.of<NotificationProvider>(context, listen: false).fetchNotifications(token);
+      }
+    });
+  }
+  // --- END NEW CODE ---
 
   @override
   Widget build(BuildContext context) {
     // Get the auth provider to find the user's role
     final authProvider = Provider.of<AuthProvider>(context);
+    
+    // --- NEW CODE ---
+    // Listen to the other providers to get the live data
+    final leaveProvider = Provider.of<LeaveProvider>(context);
+    final notificationProvider = Provider.of<NotificationProvider>(context);
+    // --- END NEW CODE ---
+
     final user = authProvider.user;
     final String role = user?['role'] ?? 'employee'; // Get the role
 
-    // --- NEW LOGIC ---
     // Create the dynamic titles based on the role
     String dashboardTitle;
     String chipText;
@@ -33,24 +65,18 @@ class HomeScreen extends StatelessWidget {
       dashboardTitle = 'Employee Dashboard';
       chipText = 'EMPLOYEE';
     }
-    // --- END NEW LOGIC ---
 
     return Scaffold(
-      // We use our custom drawer here
       drawer: const DrawerMenu(),
-      
       appBar: AppBar(
-        // UPDATED: Use the dynamic title
         title: Text(dashboardTitle),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black, // Makes icons and title black
         elevation: 1,
-        // This adds the "Employee" tag
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Chip(
-              // UPDATED: Use the dynamic chip text
               label: Text(chipText),
               backgroundColor: Colors.blue.shade900,
               labelStyle: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
@@ -77,31 +103,34 @@ class HomeScreen extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 12.0,
               crossAxisSpacing: 12.0,
-              childAspectRatio: 1.2, // Makes cards a bit taller
+              childAspectRatio: 1.2,
               children: [
                 _buildStatCard(
                   title: 'Leave Balance',
-                  value: '18',
+                  value: '18', // Still hardcoded for now
                   unit: 'days',
                   icon: Icons.calendar_today,
                   color: Colors.orange,
                 ),
                 _buildStatCard(
                   title: 'Attendance This Month',
-                  value: '22/23',
+                  value: '22/23', // Still hardcoded for now
                   unit: 'days',
                   icon: Icons.access_time,
                   color: Colors.blue,
                 ),
+                
+                // --- UPDATED ---
                 _buildStatCard(
                   title: 'Pending Requests',
-                  value: '2',
+                  value: leaveProvider.pendingCount.toString(), // Now dynamic
                   icon: Icons.pending_actions,
                   color: Colors.red,
                 ),
+                // --- UPDATED ---
                 _buildStatCard(
                   title: 'Notifications',
-                  value: '5',
+                  value: notificationProvider.unreadCount.toString(), // Now dynamic
                   icon: Icons.notifications,
                   color: Colors.green,
                 ),

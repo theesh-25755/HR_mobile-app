@@ -28,6 +28,41 @@ class ApiService {
       throw Exception('Failed to login. Status code: ${response.statusCode}');
     }
   }
+  // ... inside ApiService class, after updateProfile function ...
 
+  // Handles GET /my-leave-applications
+  static Future<List<dynamic>> getMyLeaveApplications(String token) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/my-leave-applications'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token', // Send the token
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to load leave applications');
+    }
+  }
+// ... inside ApiService class, after getMyLeaveApplications ...
+
+  // Handles GET /notifications
+  static Future<List<dynamic>> getNotifications(String token) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/notifications'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token', // Send the token
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to load notifications');
+    }
+  }
   // We will add more functions here (getProfile, getLeaves, etc.)
 }

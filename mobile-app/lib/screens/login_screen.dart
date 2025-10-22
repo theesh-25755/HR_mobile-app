@@ -89,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: Color.fromARGB(255, 14, 14, 14),
                                 ),
                               ),
                               const SizedBox(height: 30),
@@ -99,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 controller: _emailController,
                                 decoration: _buildInputDecoration('Email'),
                                 keyboardType: TextInputType.emailAddress,
-                                style: const TextStyle(color: Colors.white),
+                                style: const TextStyle(color: Color.fromARGB(255, 18, 17, 17)),
                                 validator: (value) {
                                   if (value == null ||
                                       value.isEmpty ||
@@ -122,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       _isPasswordVisible
                                           ? Icons.visibility
                                           : Icons.visibility_off,
-                                      color: Colors.white70,
+                                      color: const Color.fromARGB(179, 17, 16, 16),
                                     ),
                                     onPressed: () {
                                       setState(() {
@@ -156,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ),
                                         ),
                                         child: const Text(
-                                          'Sign In',
+                                          'Log In',
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
@@ -186,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
       labelText: label,
       labelStyle: const TextStyle(color: Colors.white70),
       filled: true,
-      fillColor: Colors.white.withOpacity(0.1),
+      fillColor: const Color.fromARGB(255, 18, 17, 17).withOpacity(0.1),
       suffixIcon: suffixIcon,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(30.0),

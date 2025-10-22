@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_app/providers/auth_provider.dart';
+import 'package:mobile_app/providers/leave_provider.dart';
+import 'package:mobile_app/providers/notification_provider.dart'; // <-- Your new provider
 import 'package:mobile_app/screens/login_screen.dart';
 import 'package:mobile_app/screens/home_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    // We wrap the *entire app* in MultiProvider
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => AuthProvider()),
+        ChangeNotifierProvider(create: (context) => LeaveProvider()),
+        ChangeNotifierProvider(create: (context) => NotificationProvider()), // <-- This is the new line
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -13,16 +25,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => AuthProvider(),
-      child: MaterialApp(
-        title: 'HRMS App',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-        ),
-        home: const AuthWrapper(),
+    // MaterialApp now goes here, inside the providers
+    return MaterialApp(
+      title: 'HRMS App',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
+      home: const AuthWrapper(),
+      debugShowCheckedModeBanner: false, // Hides the "debug" banner
     );
   }
 }
