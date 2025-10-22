@@ -1,0 +1,6 @@
+# examples — edit based on your tech stack
+node_modules/
+build/
+.env
+.DS_Store
+*.log
