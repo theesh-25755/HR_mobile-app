@@ -4,6 +4,7 @@ import 'package:mobile_app/providers/auth_provider.dart';
 import 'package:mobile_app/providers/leave_provider.dart';
 import 'package:mobile_app/providers/notification_provider.dart';
 import 'package:mobile_app/providers/attendance_provider.dart';
+import 'package:mobile_app/providers/calendar_provider.dart'; 
 import 'package:mobile_app/screens/login_screen.dart';
 import 'package:mobile_app/screens/home_screen.dart';
 
@@ -15,7 +16,8 @@ void main() {
         ChangeNotifierProvider(create: (context) => AuthProvider()),
         ChangeNotifierProvider(create: (context) => LeaveProvider()),
         ChangeNotifierProvider(create: (context) => NotificationProvider()),
-        ChangeNotifierProvider(create: (context) => AttendanceProvider()), 
+        ChangeNotifierProvider(create: (context) => AttendanceProvider()),
+        ChangeNotifierProvider(create: (context) => CalendarProvider()), 
       ],
       child: const MyApp(),
     ),

@@ -1,6 +1,6 @@
 // lib/widgets/drawer_menu.dart
 
-import 'dart:convert'; // <-- ADDED THIS (was missing for base64Decode)
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_app/providers/auth_provider.dart';
@@ -9,7 +9,8 @@ import 'package:mobile_app/providers/auth_provider.dart';
 import 'package:mobile_app/screens/leave_status_screen.dart';
 import 'package:mobile_app/screens/profile_screen.dart';
 import 'package:mobile_app/screens/notifications_screen.dart';
-import 'package:mobile_app/screens/attendance_screen.dart'; // <-- ADDED THIS
+import 'package:mobile_app/screens/attendance_screen.dart';
+import 'package:mobile_app/screens/calendar_screen.dart'; // <-- ADDED THIS
 
 class DrawerMenu extends StatelessWidget {
   const DrawerMenu({super.key});
@@ -92,7 +93,6 @@ class DrawerMenu extends StatelessWidget {
               },
             ),
             
-            // --- NEW ATTENDANCE ITEM ---
             _buildDrawerItem(
               context: context,
               icon: Icons.access_time, // Attendance Icon
@@ -102,6 +102,20 @@ class DrawerMenu extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const AttendanceScreen()),
+                );
+              },
+            ),
+
+            // --- NEW CALENDAR ITEM ---
+            _buildDrawerItem(
+              context: context,
+              icon: Icons.calendar_month,
+              title: 'Office Calendar',
+              onTap: () {
+                Navigator.of(context).pop(); // Close drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CalendarScreen()),
                 );
               },
             ),

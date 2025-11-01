@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from flask import Flask, request, jsonify
 import bcrypt
 from flask_jwt_extended import (
@@ -16,7 +16,8 @@ from werkzeug.utils import secure_filename
 # Flask app setup
 # -------------------------
 app = Flask(__name__)
-CORS(app)
+# Use the more explicit CORS setup for development
+CORS(app, resources={r"/*": {"origins": "*"}}) 
 
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'
 jwt = JWTManager(app)
@@ -28,7 +29,7 @@ ca = certifi.where()
 
 client = MongoClient(
     "mongodb+srv://database001:database123@cluster001.ptbnw11.mongodb.net/?retryWrites=true&w=majority&appName=Cluster001",
-    tlsCAFile=ca  # <-- Add this line
+    tlsCAFile=ca
 )
 
 db = client["database001"]
@@ -36,6 +37,7 @@ users_collection = db["usersdata"]
 leave_collection = db["leave_applications"]
 notifications_collection = db["notifications"]
 attendance_collection = db["attendance"]
+events_collection = db["events"] # <-- Make sure this line is here
 
 # -------------------------
 # Register Route
@@ -60,7 +62,8 @@ def register():
         "email": email,
         "password": hashed_pw,
         "role": role,
-        "name": name
+        "name": name,
+        "createdAt": datetime.now(UTC)
     })
 
     return jsonify({"message": "User registered successfully!"}), 201
@@ -135,6 +138,10 @@ def get_user_profile():
 
     user["_id"] = str(user["_id"])
     user["profile_image"] = profile_image
+    
+    if isinstance(user.get("createdAt"), datetime):
+        user["createdAt"] = user["createdAt"].isoformat()
+        
     return jsonify(user), 200
 
 # -------------------------
@@ -185,7 +192,7 @@ def upload_profile_photo():
             {"$set": {
                 "profile_image": data_url,
                 "profile_image_filename": filename,
-                "profile_image_updatedAt": datetime.utcnow().isoformat()
+                "profile_image_updatedAt": datetime.now(UTC).isoformat()
             }}
         )
         if result.matched_count == 0:
@@ -209,6 +216,8 @@ def get_users():
     users = list(users_collection.find({}, {"password": 0}))
     for u in users:
         u["_id"] = str(u["_id"])
+        if isinstance(u.get("createdAt"), datetime):
+            u["createdAt"] = u["createdAt"].isoformat()
     return jsonify(users), 200
 
 # -------------------------
@@ -235,7 +244,7 @@ def leave_application():
             "reason": data.get("reason"),
             "halfDay": data.get("halfDay", False),
             "days": data.get("days"),
-            "submittedAt": datetime.utcnow().isoformat(),
+            "submittedAt": datetime.now(UTC).isoformat(),
             "approvals": {
                 "supervisor": "Pending",
                 "project_manager": "Pending",
@@ -243,7 +252,7 @@ def leave_application():
             },
             "finalStatus": "Pending",
             "history": [],
-            "updatedAt": datetime.utcnow().isoformat()
+            "updatedAt": datetime.now(UTC).isoformat()
         }
 
         res = leave_collection.insert_one(leave_data)
@@ -271,7 +280,7 @@ def get_pending_leaves():
             "approvals.supervisor": "Approved",
             "approvals.project_manager": "Pending"
         }
-    else:
+    else: # hr_manager
         query = {
             **base_query,
             "approvals.supervisor": "Approved",
@@ -323,7 +332,7 @@ def approve_or_reject(leave_id):
 
         updates = {
             f"approvals.{role}": action,
-            "updatedAt": datetime.utcnow().isoformat()
+            "updatedAt": datetime.now(UTC).isoformat()
         }
 
         history_entry = {
@@ -332,19 +341,19 @@ def approve_or_reject(leave_id):
             "by_name": actor_name,
             "action": action,
             "comment": comment,
-            "at": datetime.utcnow().isoformat()
+            "at": datetime.now(UTC).isoformat()
         }
 
         if action == "Rejected":
             updates["finalStatus"] = "Rejected"
             updates["rejectedBy"] = role
-            updates["rejectedAt"] = datetime.utcnow().isoformat()
+            updates["rejectedAt"] = datetime.now(UTC).isoformat()
         else:
             new_approvals = leave["approvals"].copy()
             new_approvals[role] = "Approved"
             if all(v == "Approved" for v in new_approvals.values()):
                 updates["finalStatus"] = "Approved"
-                updates["approvedAt"] = datetime.utcnow().isoformat()
+                updates["approvedAt"] = datetime.now(UTC).isoformat()
 
         leave_collection.update_one(
             {"_id": ObjectId(leave_id)},
@@ -381,7 +390,7 @@ def create_notification(user_email, type_, message, status="unread"):
         "type": type_,
         "message": message,
         "status": status,
-        "createdAt": datetime.utcnow().isoformat()
+        "createdAt": datetime.now(UTC).isoformat()
     })
 
 @app.route("/notifications", methods=["GET"])
@@ -412,20 +421,18 @@ def my_leave_applications():
 @app.route('/attendance/checkin', methods=['POST'])
 @jwt_required()
 def check_in():
-    # tolerate empty/non-JSON bodies from clients (no body needed)
     data = request.get_json(silent=True)
     employee_id = get_jwt_identity()
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
 
-    existing = attendance_collection.find_one({"employeeId": employee_id, "date": today}) # <-- MODIFIED
+    existing = attendance_collection.find_one({"employeeId": employee_id, "date": today})
     if existing:
-        # idempotent: return OK if already checked in
         return jsonify({"message": "Already checked in for today"}), 200
 
-    attendance_collection.insert_one({ # <-- MODIFIED
+    attendance_collection.insert_one({
         "employeeId": employee_id,
         "date": today,
-        "checkInTime": datetime.now().strftime("%H:%M"),
+        "checkInTime": datetime.now(UTC).strftime("%H:%M"),
         "checkOutTime": None,
         "workedHours": None
     })
@@ -435,23 +442,25 @@ def check_in():
 @app.route('/attendance/checkout', methods=['POST'])
 @jwt_required()
 def check_out():
-    # tolerate empty/non-JSON bodies from clients
     _ = request.get_json(silent=True)
     employee_id = get_jwt_identity()
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
 
-    record = attendance_collection.find_one({"employeeId": employee_id, "date": today}) # <-- MODIFIED
+    record = attendance_collection.find_one({"employeeId": employee_id, "date": today})
     if not record:
         return jsonify({"message": "You haven't checked in today"}), 400
     if record.get("checkOutTime"):
-        # idempotent: return OK when already checked out
         return jsonify({"message": "Already checked out for today"}), 200
 
     check_in_time = datetime.strptime(record["checkInTime"], "%H:%M")
-    check_out_time = datetime.now()
+    check_out_time = datetime.now(UTC)
+    
+    # Re-create check_in_time as timezone-aware for correct calculation
+    check_in_time = check_out_time.replace(hour=check_in_time.hour, minute=check_in_time.minute, second=0, microsecond=0)
+
     worked_hours = round((check_out_time - check_in_time).seconds / 3600, 2)
 
-    attendance_collection.update_one( # <-- MODIFIED
+    attendance_collection.update_one(
         {"_id": record["_id"]},
         {"$set": {"checkOutTime": check_out_time.strftime("%H:%M"), "workedHours": worked_hours}}
     )
@@ -462,16 +471,108 @@ def check_out():
 @jwt_required()
 def get_my_attendance():
     employee_id = get_jwt_identity()
-    # Find records and serialize ObjectId
     records = []
-    for record in attendance_collection.find({"employeeId": employee_id}).sort("date", -1): # <-- MODIFIED
+    for record in attendance_collection.find({"employeeId": employee_id}).sort("date", -1):
         record["_id"] = str(record["_id"])
         records.append(record)
     return jsonify(records), 200
+
+# -------------------------
+# Events (Calendar) Routes
+# -------------------------
+
+@app.route("/events", methods=["GET"])
+@jwt_required()
+def get_all_events():
+    """Fetches all events for the calendar."""
+    try:
+        events = list(events_collection.find().sort("startDate", 1))
+        # Manually serialize the data (converts _id and datetime)
+        result = []
+        for event in events:
+            event["_id"] = str(event["_id"]) # <-- FIX 2: Convert ObjectId
+            if isinstance(event.get("startDate"), datetime):
+                event["startDate"] = event["startDate"].isoformat()
+            if isinstance(event.get("endDate"), datetime):
+                event["endDate"] = event["endDate"].isoformat()
+            if isinstance(event.get("createdAt"), datetime):
+                event["createdAt"] = event["createdAt"].isoformat()
+            result.append(event)
+            
+        return jsonify(result), 200
+    except Exception as e:
+        # This will print the *real* error to your terminal
+        print(f"Error in GET /events: {e}")
+        return jsonify({"message": f"Error fetching events: {str(e)}"}), 500
+
+@app.route("/events", methods=["POST"])
+@jwt_required()
+def create_event():
+    """Creates a new event (HR/Admin only)."""
+    claims = get_jwt()
+    if claims.get("role") not in ["super_admin", "hr_manager"]:
+        return jsonify({"message": "Access denied"}), 403
+
+    try:
+        data = request.json
+        if not data or not data.get("title") or not data.get("startDate") or not data.get("endDate"):
+             return jsonify({"message": "Invalid data: title, startDate, and endDate are required."}), 400
+
+        # Convert ISO string dates from app back to datetime objects
+        start_date = datetime.fromisoformat(data.get("startDate").replace('Z', '+00:00'))
+        end_date = datetime.fromisoformat(data.get("endDate").replace('Z', '+00:00'))
+
+        new_event = {
+            "title": data.get("title"),
+            "description": data.get("description"),
+            "startDate": start_date,
+            "endDate": end_date,
+            "eventType": data.get("eventType", "event"), # e.g., 'event' or 'holiday'
+            "createdAt": datetime.now(UTC) # <-- Fixed deprecation
+        }
+        
+        result = events_collection.insert_one(new_event)
+        
+        # Manually serialize the new event to send back
+        new_event["_id"] = str(result.inserted_id)
+        new_event["startDate"] = new_event["startDate"].isoformat()
+        new_event["endDate"] = new_event["endDate"].isoformat()
+        new_event["createdAt"] = new_event["createdAt"].isoformat()
+        
+        return jsonify(new_event), 201
+        
+    except Exception as e:
+        # This will print the *real* error to your terminal
+        print(f"Error in POST /events: {e}")
+        return jsonify({"message": f"Server error: {str(e)}"}), 500
+
+@app.route("/events/<event_id>", methods=["DELETE"])
+@jwt_required()
+def delete_event(event_id):
+    """Deletes an event (HR/Admin only)."""
+    claims = get_jwt()
+    if claims.get("role") not in ["super_admin", "hr_manager"]:
+        return jsonify({"message": "Access denied"}), 403
+
+    try:
+        if not ObjectId.is_valid(event_id):
+            return jsonify({"message": "Invalid event ID format"}), 400
+            
+        result = events_collection.delete_one({"_id": ObjectId(event_id)})
+        if result.deleted_count == 0:
+            return jsonify({"message": "Event not found"}), 404
+        
+        return jsonify({"message": "Event deleted successfully"}), 200
+        
+    except Exception as e:
+        # This will print the *real* error to your terminal
+        print(f"Error in DELETE /events: {e}")
+        return jsonify({"message": f"Server error: {str(e)}"}), 500
 
 
 # -------------------------
 # Run Flask
 # -------------------------
 if __name__ == '__main__':
+    print("🎯 Starting Flask server on http://0.0.0.0:5000")
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -148,4 +148,39 @@ class ApiService {
       throw Exception('Failed to check out');
     }
   }
+
+  
+
+  // Handles GET /events
+  static Future<List<dynamic>> getEvents(String token) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/events'),
+      headers: <String, String>{
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    } else {
+      throw Exception('Failed to load events');
+    }
+  }
+
+  // Handles POST /events
+  static Future<Map<String, dynamic>> createEvent(String token, Map<String, dynamic> eventData) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/events'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(eventData),
+    );
+    
+    if (response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create event');
+    }
+  }
 }
