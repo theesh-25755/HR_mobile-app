@@ -35,6 +35,7 @@ db = client["database001"]
 users_collection = db["usersdata"]
 leave_collection = db["leave_applications"]
 notifications_collection = db["notifications"]
+attendance_collection = db["attendance"]
 
 # -------------------------
 # Register Route
@@ -403,6 +404,71 @@ def my_leave_applications():
     for leave in leaves:
         leave["_id"] = str(leave["_id"])
     return jsonify(leaves), 200
+
+# -------------------------
+# Attendance Management
+# -------------------------
+
+@app.route('/attendance/checkin', methods=['POST'])
+@jwt_required()
+def check_in():
+    # tolerate empty/non-JSON bodies from clients (no body needed)
+    data = request.get_json(silent=True)
+    employee_id = get_jwt_identity()
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    existing = attendance_collection.find_one({"employeeId": employee_id, "date": today}) # <-- MODIFIED
+    if existing:
+        # idempotent: return OK if already checked in
+        return jsonify({"message": "Already checked in for today"}), 200
+
+    attendance_collection.insert_one({ # <-- MODIFIED
+        "employeeId": employee_id,
+        "date": today,
+        "checkInTime": datetime.now().strftime("%H:%M"),
+        "checkOutTime": None,
+        "workedHours": None
+    })
+    return jsonify({"message": "Check-in successful", "date": today}), 200
+
+
+@app.route('/attendance/checkout', methods=['POST'])
+@jwt_required()
+def check_out():
+    # tolerate empty/non-JSON bodies from clients
+    _ = request.get_json(silent=True)
+    employee_id = get_jwt_identity()
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    record = attendance_collection.find_one({"employeeId": employee_id, "date": today}) # <-- MODIFIED
+    if not record:
+        return jsonify({"message": "You haven't checked in today"}), 400
+    if record.get("checkOutTime"):
+        # idempotent: return OK when already checked out
+        return jsonify({"message": "Already checked out for today"}), 200
+
+    check_in_time = datetime.strptime(record["checkInTime"], "%H:%M")
+    check_out_time = datetime.now()
+    worked_hours = round((check_out_time - check_in_time).seconds / 3600, 2)
+
+    attendance_collection.update_one( # <-- MODIFIED
+        {"_id": record["_id"]},
+        {"$set": {"checkOutTime": check_out_time.strftime("%H:%M"), "workedHours": worked_hours}}
+    )
+    return jsonify({"message": "Check-out successful", "workedHours": worked_hours}), 200
+
+
+@app.route('/attendance/my', methods=['GET'])
+@jwt_required()
+def get_my_attendance():
+    employee_id = get_jwt_identity()
+    # Find records and serialize ObjectId
+    records = []
+    for record in attendance_collection.find({"employeeId": employee_id}).sort("date", -1): # <-- MODIFIED
+        record["_id"] = str(record["_id"])
+        records.append(record)
+    return jsonify(records), 200
+
 
 # -------------------------
 # Run Flask
