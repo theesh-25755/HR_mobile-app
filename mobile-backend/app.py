@@ -432,7 +432,7 @@ def check_in():
     attendance_collection.insert_one({
         "employeeId": employee_id,
         "date": today,
-        "checkInTime": datetime.now(UTC).strftime("%H:%M"),
+        "checkInTime": datetime.now(UTC).isoformat(), # <-- CHANGED
         "checkOutTime": None,
         "workedHours": None
     })
@@ -452,17 +452,19 @@ def check_out():
     if record.get("checkOutTime"):
         return jsonify({"message": "Already checked out for today"}), 200
 
-    check_in_time = datetime.strptime(record["checkInTime"], "%H:%M")
+    # check_in_time is now a full ISO string
+    check_in_time = datetime.fromisoformat(record["checkInTime"]) 
     check_out_time = datetime.now(UTC)
     
-    # Re-create check_in_time as timezone-aware for correct calculation
-    check_in_time = check_out_time.replace(hour=check_in_time.hour, minute=check_in_time.minute, second=0, microsecond=0)
-
+    # This calculation is now timezone-aware and correct
     worked_hours = round((check_out_time - check_in_time).seconds / 3600, 2)
 
     attendance_collection.update_one(
         {"_id": record["_id"]},
-        {"$set": {"checkOutTime": check_out_time.strftime("%H:%M"), "workedHours": worked_hours}}
+        {"$set": {
+            "checkOutTime": check_out_time.isoformat(), # <-- CHANGED
+            "workedHours": worked_hours
+        }}
     )
     return jsonify({"message": "Check-out successful", "workedHours": worked_hours}), 200
 
@@ -535,7 +537,7 @@ def create_event():
             "startDate": start_date,
             "endDate": end_date,
             "eventType": data.get("eventType", "event"), # e.g., 'event' or 'holiday'
-            "createdAt": datetime.now(UTC) # <-- Fixed deprecation
+            "createdAt": datetime.now(UTC)
         }
         
         result = events_collection.insert_one(new_event)

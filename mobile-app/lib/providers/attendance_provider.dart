@@ -19,6 +19,20 @@ class AttendanceProvider with ChangeNotifier {
   bool get canCheckOut => _canCheckOut;
   String get todayStatus => _todayStatus;
 
+  // --- NEW HELPER FUNCTION ---
+  // Converts a UTC ISO string to a local time string (e.g., "13:34")
+  String _formatTime(String? isoString) {
+    if (isoString == null) return "N/A";
+    try {
+      final dateTime = DateTime.parse(isoString);
+      final localTime = dateTime.toLocal(); // Convert to local time
+      return DateFormat('HH:mm').format(localTime); // Format as 13:34
+    } catch (e) {
+      return "Invalid Time";
+    }
+  }
+  // --- END NEW HELPER ---
+
   // Function to fetch data and update button states
   Future<void> fetchMyAttendance(String token) async {
     _isLoading = true;
@@ -45,7 +59,6 @@ class AttendanceProvider with ChangeNotifier {
       await fetchMyAttendance(token); // Re-fetch data to update UI
     } catch (e) {
       print(e);
-      // You can show a SnackBar from the UI here
     }
     _isLoading = false;
     notifyListeners();
@@ -86,7 +99,8 @@ class AttendanceProvider with ChangeNotifier {
         // Checked in, but not checked out
         _canCheckIn = false;
         _canCheckOut = true;
-        _todayStatus = "Checked in at ${todayRecord['checkInTime']}.";
+        // --- UPDATED THIS LINE ---
+        _todayStatus = "Checked in at ${_formatTime(todayRecord['checkInTime'])}.";
       } else {
         // Already checked in and out
         _canCheckIn = false;

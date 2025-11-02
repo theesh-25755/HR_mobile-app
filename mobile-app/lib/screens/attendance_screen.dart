@@ -28,6 +28,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
+  // --- NEW HELPER FUNCTION ---
+  // Converts a UTC ISO string to a local time string (e.g., "13:34")
+  String _formatTime(String? isoString) {
+    if (isoString == null) return "N/A";
+    try {
+      final dateTime = DateTime.parse(isoString);
+      final localTime = dateTime.toLocal(); // Convert to local time
+      return DateFormat('HH:mm').format(localTime); // Format as 13:34
+    } catch (e) {
+      return "N/A";
+    }
+  }
+  // --- END NEW HELPER ---
+
   @override
   Widget build(BuildContext context) {
     // Listen to the provider
@@ -80,7 +94,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               backgroundColor: Colors.green,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
-                            // Disable button if loading or cannot check in
                             onPressed: (attendanceProvider.canCheckIn && !attendanceProvider.isLoading && token != null)
                                 ? () => attendanceProvider.checkIn(token)
                                 : null,
@@ -95,7 +108,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                               backgroundColor: const Color(0xFFC62828),
                               padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
-                            // Disable button if loading or cannot check out
                             onPressed: (attendanceProvider.canCheckOut && !attendanceProvider.isLoading && token != null)
                                 ? () => attendanceProvider.checkOut(token)
                                 : null,
@@ -170,7 +182,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         maxY: 10, // Max 10 hours
         barGroups: recentRecords.map((record) {
           final date = DateTime.parse(record['date']);
-          final day = DateFormat('MM/dd').format(date);
           final hours = (record['workedHours'] ?? 0.0).toDouble();
           
           return BarChartGroupData(
@@ -245,8 +256,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               child: Row(
                 children: [
                   Expanded(flex: 2, child: Text(record['date'] ?? 'N/A')),
-                  Expanded(flex: 2, child: Text(record['checkInTime'] ?? 'N/A')),
-                  Expanded(flex: 2, child: Text(record['checkOutTime'] ?? 'N/A')),
+                  // --- UPDATED THESE LINES ---
+                  Expanded(flex: 2, child: Text(_formatTime(record['checkInTime']))),
+                  Expanded(flex: 2, child: Text(_formatTime(record['checkOutTime']))),
+                  // --- END UPDATES ---
                   Expanded(flex: 1, child: Text(record['workedHours']?.toString() ?? 'N/A')),
                 ],
               ),
