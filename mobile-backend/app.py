@@ -478,6 +478,23 @@ def get_my_attendance():
     return jsonify(records), 200
 
 # -------------------------
+# Helper function for MongoDB document serialization
+# -------------------------
+def serialize_mongo_doc(doc):
+    """Convert MongoDB document to JSON-serializable format."""
+    if isinstance(doc, dict):
+        for key, value in doc.items():
+            if isinstance(value, ObjectId):
+                doc[key] = str(value)
+            elif isinstance(value, datetime):
+                doc[key] = value.isoformat()
+            elif isinstance(value, dict):
+                doc[key] = serialize_mongo_doc(value)
+            elif isinstance(value, list):
+                doc[key] = [serialize_mongo_doc(item) for item in value]
+    return doc
+
+# -------------------------
 # Events (Calendar) Routes
 # -------------------------
 
@@ -487,18 +504,8 @@ def get_all_events():
     """Fetches all events for the calendar."""
     try:
         events = list(events_collection.find().sort("startDate", 1))
-        # Manually serialize the data (converts _id and datetime)
-        result = []
-        for event in events:
-            event["_id"] = str(event["_id"]) # <-- FIX 2: Convert ObjectId
-            if isinstance(event.get("startDate"), datetime):
-                event["startDate"] = event["startDate"].isoformat()
-            if isinstance(event.get("endDate"), datetime):
-                event["endDate"] = event["endDate"].isoformat()
-            if isinstance(event.get("createdAt"), datetime):
-                event["createdAt"] = event["createdAt"].isoformat()
-            result.append(event)
-            
+        # Serialize all documents using the helper function
+        result = [serialize_mongo_doc(event) for event in events]
         return jsonify(result), 200
     except Exception as e:
         # This will print the *real* error to your terminal

@@ -66,10 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: MediaQuery.of(context).size.width * 0.85,
                         padding: const EdgeInsets.all(24.0),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withOpacity(0.4),
                           borderRadius: BorderRadius.circular(25.0),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withOpacity(0.4),
                             width: 1.5,
                           ),
                         ),
@@ -143,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                               // 7. Login Button
                               isLoading
-                                  ? const CircularProgressIndicator(color: Colors.white)
+                                  ? const CircularProgressIndicator(color: Color.fromARGB(255, 95, 94, 94))
                                   : SizedBox(
                                       width: double.infinity,
                                       child: ElevatedButton(
@@ -184,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
   InputDecoration _buildInputDecoration(String label, {Widget? suffixIcon}) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Colors.white70),
+      labelStyle: const TextStyle(color: Color.fromARGB(179, 43, 43, 43)),
       filled: true,
       fillColor: const Color.fromARGB(255, 18, 17, 17).withOpacity(0.1),
       suffixIcon: suffixIcon,
