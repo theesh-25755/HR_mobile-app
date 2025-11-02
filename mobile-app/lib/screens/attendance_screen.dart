@@ -1,5 +1,6 @@
 // lib/screens/attendance_screen.dart
 
+import 'dart:ui'; // <-- ADDED for ImageFilter
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
@@ -28,8 +29,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
-  // --- NEW HELPER FUNCTION ---
-  // Converts a UTC ISO string to a local time string (e.g., "13:34")
+  // Helper function to format the date
   String _formatTime(String? isoString) {
     if (isoString == null) return "N/A";
     try {
@@ -40,7 +40,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return "N/A";
     }
   }
-  // --- END NEW HELPER ---
 
   @override
   Widget build(BuildContext context) {
@@ -49,129 +48,158 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final token = Provider.of<AuthProvider>(context, listen: false).token;
 
     return Scaffold(
+      // --- MODIFICATIONS FOR FROSTED GLASS ---
+      extendBodyBehindAppBar: true, // Allow body to go behind AppBar
       appBar: AppBar(
         title: const Text('Attendance Dashboard'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
+        backgroundColor: Colors.transparent, // Make AppBar transparent
+        foregroundColor: Colors.white, // Make title and back arrow white
+        elevation: 0, // Remove shadow
       ),
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: attendanceProvider.isLoading && attendanceProvider.attendanceRecords.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () async {
-                if (token != null) {
-                  await attendanceProvider.fetchMyAttendance(token);
-                }
-              },
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Attendance Dashboard',
-                      style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFC62828)),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Manage and view your daily attendance records',
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
-                    ),
-                    const SizedBox(height: 24),
+      backgroundColor: Colors.transparent, // Remove solid background
+      // --- END MODIFICATIONS ---
 
-                    // Check In / Check Out Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.check_circle_outline, color: Colors.white),
-                            label: const Text('Check In', style: TextStyle(color: Colors.white)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            onPressed: (attendanceProvider.canCheckIn && !attendanceProvider.isLoading && token != null)
-                                ? () => attendanceProvider.checkIn(token)
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.exit_to_app, color: Colors.white),
-                            label: const Text('Check Out', style: TextStyle(color: Colors.white)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFC62828),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
-                            onPressed: (attendanceProvider.canCheckOut && !attendanceProvider.isLoading && token != null)
-                                ? () => attendanceProvider.checkOut(token)
-                                : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Center(
-                      child: Text(
-                        attendanceProvider.todayStatus,
-                        style: const TextStyle(fontSize: 14, color: Colors.black54),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Active Hours Overview
-                    _buildSection(
-                      title: 'Active Hours Overview',
-                      child: SizedBox(
-                        height: 200,
-                        child: _buildBarChart(attendanceProvider.attendanceRecords),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Attendance History
-                    _buildSection(
-                      title: 'Attendance History',
-                      child: _buildAttendanceTable(attendanceProvider.attendanceRecords),
-                    ),
-                  ],
-                ),
+      body: Stack( // Stack to hold background and content
+        children: [
+          // 1. The Background Image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/back1.png'), // Use same background
+                fit: BoxFit.cover,
               ),
             ),
+          ),
+          
+          // 2. The Content
+          SafeArea( // Keep content below status bar
+            child: attendanceProvider.isLoading && attendanceProvider.attendanceRecords.isEmpty
+                ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                : RefreshIndicator(
+                    onRefresh: () async {
+                      if (token != null) {
+                        await attendanceProvider.fetchMyAttendance(token);
+                      }
+                    },
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Attendance Dashboard',
+                            style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white), // <-- CHANGED
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Manage and view your daily attendance records',
+                            style: TextStyle(fontSize: 16, color: Colors.white70), // <-- CHANGED
+                          ),
+                          const SizedBox(height: 24),
+    
+                          // Check In / Check Out Buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+                                  label: const Text('Check In', style: TextStyle(color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                  ),
+                                  onPressed: (attendanceProvider.canCheckIn && !attendanceProvider.isLoading && token != null)
+                                      ? () => attendanceProvider.checkIn(token)
+                                      : null,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.exit_to_app, color: Colors.white),
+                                  label: const Text('Check Out', style: TextStyle(color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFC62828),
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                  ),
+                                  onPressed: (attendanceProvider.canCheckOut && !attendanceProvider.isLoading && token != null)
+                                      ? () => attendanceProvider.checkOut(token)
+                                      : null,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Center(
+                            child: Text(
+                              attendanceProvider.todayStatus,
+                              style: const TextStyle(fontSize: 14, color: Colors.white), // <-- CHANGED
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+    
+                          // Active Hours Overview
+                          _buildSection(
+                            title: 'Active Hours Overview',
+                            child: SizedBox(
+                              height: 200,
+                              child: _buildBarChart(attendanceProvider.attendanceRecords),
+                            ),
+                          ),
+    
+                          const SizedBox(height: 24),
+    
+                          // Attendance History
+                          _buildSection(
+                            title: 'Attendance History',
+                            child: _buildAttendanceTable(attendanceProvider.attendanceRecords),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
-  // Helper for Section Cards
+  // --- MODIFIED HELPER FOR LIST SECTIONS ---
   Widget _buildSection({required String title, required Widget child}) {
-    return Card(
-      elevation: 2.0,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Colors.white,
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.4), // Make it readable
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
             ),
-            const Divider(height: 24),
-            child,
-          ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black), // Dark text
+              ),
+              const Divider(height: 24),
+              child,
+            ],
+          ),
         ),
       ),
     );
   }
+  // --- END MODIFIED HELPER ---
 
-  // Helper for the Bar Chart
+  // --- MODIFIED BAR CHART HELPER ---
   Widget _buildBarChart(List<dynamic> records) {
     // Get last 7 days of records
     final recentRecords = records.take(7).toList().reversed;
@@ -191,6 +219,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 toY: hours,
                 color: const Color(0xFFC62828),
                 width: 16,
+                borderRadius: BorderRadius.zero, // Make bars square
               ),
             ],
           );
@@ -203,22 +232,42 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
                 return Padding(
                   padding: const EdgeInsets.only(top: 6.0),
-                  child: Text(DateFormat('MM/dd').format(date), style: const TextStyle(fontSize: 10)),
+                  child: Text(
+                    DateFormat('MM/dd').format(date), 
+                    style: const TextStyle(fontSize: 10, color: Colors.black87) // <-- CHANGED
+                  ),
                 );
               },
             ),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 28)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true, 
+              reservedSize: 28,
+              getTitlesWidget: (value, meta) => Text( // <-- ADDED to style
+                value.toInt().toString(), 
+                style: const TextStyle(fontSize: 10, color: Colors.black87),
+              ),
+            )
+          ),
           topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: false),
-        gridData: FlGridData(show: true, drawVerticalLine: false),
+        gridData: FlGridData(
+          show: true, 
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine( // Style grid lines
+            color: Colors.black.withOpacity(0.1),
+            strokeWidth: 1,
+          ),
+        ),
       ),
     );
   }
+  // --- END MODIFIED HELPER ---
 
-  // Helper for the Attendance Table
+  // --- MODIFIED TABLE HELPER ---
   Widget _buildAttendanceTable(List<dynamic> records) {
     return Column(
       children: [
@@ -226,7 +275,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           decoration: BoxDecoration(
-            color: Colors.red[50],
+            color: Colors.white.withOpacity(0.3), // <-- CHANGED
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(8),
               topRight: Radius.circular(8),
@@ -234,10 +283,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
           child: const Row(
             children: [
-              Expanded(flex: 2, child: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
-              Expanded(flex: 2, child: Text('Check In', style: TextStyle(fontWeight: FontWeight.bold))),
-              Expanded(flex: 2, child: Text('Check Out', style: TextStyle(fontWeight: FontWeight.bold))),
-              Expanded(flex: 1, child: Text('Hours', style: TextStyle(fontWeight: FontWeight.bold))),
+              Expanded(flex: 2, child: Text('Date', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))),
+              Expanded(flex: 2, child: Text('Check In', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))),
+              Expanded(flex: 2, child: Text('Check Out', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))),
+              Expanded(flex: 1, child: Text('Hours', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))),
             ],
           ),
         ),
@@ -251,16 +300,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey[200]!))
+                border: Border(bottom: BorderSide(color: Colors.black.withOpacity(0.1)))
               ),
               child: Row(
                 children: [
-                  Expanded(flex: 2, child: Text(record['date'] ?? 'N/A')),
-                  // --- UPDATED THESE LINES ---
-                  Expanded(flex: 2, child: Text(_formatTime(record['checkInTime']))),
-                  Expanded(flex: 2, child: Text(_formatTime(record['checkOutTime']))),
-                  // --- END UPDATES ---
-                  Expanded(flex: 1, child: Text(record['workedHours']?.toString() ?? 'N/A')),
+                  Expanded(flex: 2, child: Text(record['date'] ?? 'N/A', style: const TextStyle(color: Colors.black87))),
+                  Expanded(flex: 2, child: Text(_formatTime(record['checkInTime']), style: const TextStyle(color: Colors.black87))),
+                  Expanded(flex: 2, child: Text(_formatTime(record['checkOutTime']), style: const TextStyle(color: Colors.black87))),
+                  Expanded(flex: 1, child: Text(record['workedHours']?.toString() ?? 'N/A', style: const TextStyle(color: Colors.black87))),
                 ],
               ),
             );
@@ -269,4 +316,5 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ],
     );
   }
+  // --- END MODIFIED HELPER ---
 }

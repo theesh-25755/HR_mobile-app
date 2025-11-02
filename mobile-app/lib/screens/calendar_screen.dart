@@ -1,5 +1,6 @@
 // lib/screens/calendar_screen.dart
 
+import 'dart:ui'; // <-- ADDED for ImageFilter
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -25,27 +26,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _selectedDay = _focusedDay;
     _selectedEvents = ValueNotifier([]);
     
-    // Use addPostFrameCallback to run this after the build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchDataAndSetSelectedEvents(); // <-- UPDATED
+      _fetchDataAndSetSelectedEvents();
     });
   }
 
-  // --- NEW HELPER FUNCTION ---
-  // Fetches data AND updates the list for the selected day
   Future<void> _fetchDataAndSetSelectedEvents() async {
     final token = Provider.of<AuthProvider>(context, listen: false).token;
     if (token == null) return;
     
-    // Fetch the events from the provider
     await Provider.of<CalendarProvider>(context, listen: false).fetchEvents(token);
     
-    // NOW update the selected events for the initially selected day
-    if (mounted) { // Check if the widget is still in the tree
+    if (mounted) {
       _onDaySelected(_selectedDay!, _focusedDay);
     }
   }
-  // --- END NEW FUNCTION ---
 
   @override
   void dispose() {
@@ -60,7 +55,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _focusedDay = focusedDay;
       });
     }
-    // Get events for the newly selected day
     _selectedEvents.value = Provider.of<CalendarProvider>(context, listen: false)
         .eventMap[DateTime.utc(selectedDay.year, selectedDay.month, selectedDay.day)] ?? [];
   }
@@ -72,13 +66,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     
     DateTime? _startDate = _selectedDay ?? DateTime.now();
     DateTime? _endDate = _selectedDay ?? DateTime.now();
-    String _eventType = 'event'; // Default value
+    String _eventType = 'event';
     bool _isSaving = false;
 
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
-        // Use StatefulBuilder to manage the dialog's internal state
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
@@ -100,7 +93,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         decoration: const InputDecoration(labelText: 'Description'),
                       ),
                       const SizedBox(height: 20),
-                      // Event Type Dropdown
                       DropdownButtonFormField<String>(
                         value: _eventType,
                         decoration: const InputDecoration(labelText: 'Event Type'),
@@ -115,7 +107,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         },
                       ),
                       const SizedBox(height: 20),
-                      // Date Pickers
                       Text('Start Date: ${DateFormat('yyyy-MM-dd').format(_startDate!)}'),
                       ElevatedButton(
                         child: const Text('Select Start Date'),
@@ -129,7 +120,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           if (date != null) {
                             setDialogState(() {
                               _startDate = date;
-                              // Default end date to start date
                               if (_endDate!.isBefore(_startDate!)) {
                                 _endDate = _startDate;
                               }
@@ -145,7 +135,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           final date = await showDatePicker(
                             context: context,
                             initialDate: _endDate!,
-                            firstDate: _startDate!, // Can't be before start date
+                            firstDate: _startDate!,
                             lastDate: DateTime(2030),
                           );
                           if (date != null) {
@@ -184,22 +174,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           "eventType": _eventType,
                         });
                         
-                        // Close the dialog on success
                         Navigator.of(dialogContext).pop();
-                        // Refresh event list for the day
                         _onDaySelected(_selectedDay!, _focusedDay); 
 
-                        // --- ADDED THIS SUCCESS MESSAGE ---
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Event added successfully!'),
                             backgroundColor: Colors.green,
                           ),
                         );
-                        // --- END NEW CODE ---
 
                       } catch (e) {
-                        // Show error
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Failed to add event: $e'), backgroundColor: Colors.red),
                         );
@@ -224,59 +209,153 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final isHR = authProvider.user?['role'] == 'hr_manager' || authProvider.user?['role'] == 'super_admin';
 
     return Scaffold(
+      // --- MODIFICATIONS FOR FROSTED GLASS ---
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Office Calendar'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: Column(
+      backgroundColor: Colors.transparent,
+      // --- END MODIFICATIONS ---
+      
+      body: Stack(
         children: [
-          TableCalendar(
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-            onDaySelected: _onDaySelected,
-            eventLoader: (day) {
-              // This is what puts the marker on the calendar
-              return calendarProvider.eventMap[DateTime.utc(day.year, day.month, day.day)] ?? [];
-            },
-            calendarStyle: CalendarStyle(
-              // This styles the marker
-              markerDecoration: BoxDecoration(
-                color: Colors.red.shade700,
-                shape: BoxShape.circle,
+          // 1. The Background Image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/back1.png'), // Use same background
+                fit: BoxFit.cover,
               ),
             ),
-            headerStyle: const HeaderStyle(
-              formatButtonVisible: false,
-              titleCentered: true,
-            ),
-            onPageChanged: (focusedDay) {
-              _focusedDay = focusedDay;
-            },
           ),
-          const Divider(height: 1),
-          Expanded(
-            child: ValueListenableBuilder<List<dynamic>>(
-              valueListenable: _selectedEvents,
-              builder: (context, value, _) {
-                if (value.isEmpty) {
-                  return const Center(
-                    child: Text('No events for this day.'),
-                  );
-                }
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: value.length,
-                  itemBuilder: (context, index) {
-                    final event = value[index];
-                    return _buildEventTile(event);
-                  },
-                );
-              },
+          
+          // 2. The Content
+          SafeArea(
+            child: Column(
+              children: [
+                // --- CALENDAR IS NOW WRAPPED IN FROSTED GLASS ---
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                    child: Container(
+                      margin: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(8.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: TableCalendar(
+                        firstDay: DateTime.utc(2020, 1, 1),
+                        lastDay: DateTime.utc(2030, 12, 31),
+                        focusedDay: _focusedDay,
+                        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                        onDaySelected: _onDaySelected,
+                        eventLoader: (day) {
+                          return calendarProvider.eventMap[DateTime.utc(day.year, day.month, day.day)] ?? [];
+                        },
+                        // --- STYLES UPDATED TO BE READABLE (DARK TEXT) ---
+                        calendarStyle: CalendarStyle(
+                          markerDecoration: BoxDecoration(
+                            color: Colors.red.shade700,
+                            shape: BoxShape.circle,
+                          ),
+                          todayDecoration: BoxDecoration(
+                            color: Colors.red.shade200,
+                            shape: BoxShape.circle,
+                          ),
+                          selectedDecoration: BoxDecoration(
+                            color: Colors.red.shade700,
+                            shape: BoxShape.circle,
+                          ),
+                          defaultTextStyle: const TextStyle(color: Colors.black87),
+                          weekendTextStyle: TextStyle(color: Colors.red.shade900),
+                          outsideTextStyle: TextStyle(color: Colors.grey.shade600),
+                        ),
+                        headerStyle: const HeaderStyle(
+                          formatButtonVisible: false,
+                          titleCentered: true,
+                          titleTextStyle: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+                          leftChevronIcon: Icon(Icons.chevron_left, color: Colors.black),
+                          rightChevronIcon: Icon(Icons.chevron_right, color: Colors.black),
+                        ),
+                        daysOfWeekStyle: DaysOfWeekStyle(
+                          weekdayStyle: const TextStyle(color: Colors.black54),
+                          weekendStyle: TextStyle(color: Colors.red.shade900),
+                        ),
+                        // --- END STYLE UPDATES ---
+                        onPageChanged: (focusedDay) {
+                          _focusedDay = focusedDay;
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // --- EVENT LIST TITLE ---
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.list_alt, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        'Events on this day',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // --- EVENT LIST IS NOW WRAPPED IN FROSTED GLASS ---
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.4),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(12),
+                            topRight: Radius.circular(12),
+                          ),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        ),
+                        child: ValueListenableBuilder<List<dynamic>>(
+                          valueListenable: _selectedEvents,
+                          builder: (context, value, _) {
+                            if (value.isEmpty) {
+                              return const Center(
+                                child: Text(
+                                  'No events for this day.',
+                                  style: TextStyle(color: Colors.black87), // <-- CHANGED
+                                ),
+                              );
+                            }
+                            return ListView.builder(
+                              padding: const EdgeInsets.all(16.0),
+                              itemCount: value.length,
+                              itemBuilder: (context, index) {
+                                final event = value[index];
+                                return _buildEventTile(event);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -289,17 +368,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
               backgroundColor: Colors.red.shade700,
               child: const Icon(Icons.add, color: Colors.white),
             )
-          : null, // No button if not HR
+          : null,
     );
   }
 
+  // --- MODIFIED EVENT TILE HELPER ---
   Widget _buildEventTile(Map<String, dynamic> event) {
     bool isHoliday = event['eventType'] == 'holiday';
     return Card(
-      elevation: 2.0,
-      shadowColor: Colors.black12,
+      elevation: 0,
+      color: Colors.white.withOpacity(0.7), // Make list tiles slightly transparent
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Colors.white,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       child: ListTile(
         leading: Icon(
@@ -308,9 +387,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         title: Text(
           event['title'] ?? 'No Title',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
         ),
-        subtitle: Text(event['description'] ?? 'No Description'),
+        subtitle: Text(
+          event['description'] ?? 'No Description',
+          style: const TextStyle(color: Colors.black87),
+        ),
       ),
     );
   }

@@ -103,26 +103,26 @@ class _HomeScreenState extends State<HomeScreen> {
                             value: '18', // Still hardcoded
                             unit: 'days',
                             icon: Icons.calendar_today,
-                            color: Colors.orange,
+                            color: const Color.fromARGB(255, 165, 71, 13),
                           ),
                           _buildStatCard(
                             title: 'Attendance This Month',
                             value: '22/23', // Still hardcoded
                             unit: 'days',
                             icon: Icons.access_time,
-                            color: Colors.blue,
+                            color: const Color.fromARGB(255, 2, 68, 122),
                           ),
                           _buildStatCard(
                             title: 'Pending Requests',
                             value: leaveProvider.pendingCount.toString(),
                             icon: Icons.pending_actions,
-                            color: Colors.red,
+                            color: const Color.fromARGB(255, 237, 32, 17),
                           ),
                           _buildStatCard(
                             title: 'Notifications',
                             value: notificationProvider.unreadCount.toString(),
                             icon: Icons.notifications,
-                            color: Colors.green,
+                            color: const Color.fromARGB(255, 13, 116, 16),
                           ),
                         ],
                       ),
