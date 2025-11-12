@@ -11,6 +11,7 @@ from bson import ObjectId
 import base64
 import certifi
 from werkzeug.utils import secure_filename
+import os # <-- 1. IMPORT OS
 
 # -------------------------
 # Flask app setup
@@ -27,8 +28,15 @@ jwt = JWTManager(app)
 # -------------------------
 ca = certifi.where()
 
+# 2. GET THE CONNECTION STRING FROM THE ENVIRONMENT VARIABLE
+connection_string = os.environ.get("MONGO_URI") 
+if not connection_string:
+    print("WARNING: MONGO_URI environment variable not set. Using fallback for local dev.")
+    # Fallback for local development
+    connection_string = "mongodb+srv://database001:database123@cluster001.ptbnw11.mongodb.net/?retryWrites=true&w=majority&appName=Cluster001"
+
 client = MongoClient(
-    "mongodb+srv://database001:database123@cluster001.ptbnw11.mongodb.net/?retryWrites=true&w=majority&appName=Cluster001",
+    connection_string, # Use the variable here
     tlsCAFile=ca
 )
 
@@ -432,7 +440,7 @@ def check_in():
     attendance_collection.insert_one({
         "employeeId": employee_id,
         "date": today,
-        "checkInTime": datetime.now(UTC).isoformat(), # <-- CHANGED
+        "checkInTime": datetime.now(UTC).isoformat(),
         "checkOutTime": None,
         "workedHours": None
     })
@@ -452,17 +460,21 @@ def check_out():
     if record.get("checkOutTime"):
         return jsonify({"message": "Already checked out for today"}), 200
 
-    # check_in_time is now a full ISO string
-    check_in_time = datetime.fromisoformat(record["checkInTime"]) 
+    try:
+        check_in_time = datetime.fromisoformat(record["checkInTime"]) 
+    except ValueError:
+        # Fallback for old "HH:MM" data
+        check_in_time_obj = datetime.strptime(record["checkInTime"], "%H:%M")
+        check_in_time = datetime.now(UTC).replace(hour=check_in_time_obj.hour, minute=check_in_time_obj.minute, second=0, microsecond=0)
+
     check_out_time = datetime.now(UTC)
     
-    # This calculation is now timezone-aware and correct
     worked_hours = round((check_out_time - check_in_time).seconds / 3600, 2)
 
     attendance_collection.update_one(
         {"_id": record["_id"]},
         {"$set": {
-            "checkOutTime": check_out_time.isoformat(), # <-- CHANGED
+            "checkOutTime": check_out_time.isoformat(),
             "workedHours": worked_hours
         }}
     )
@@ -476,6 +488,11 @@ def get_my_attendance():
     records = []
     for record in attendance_collection.find({"employeeId": employee_id}).sort("date", -1):
         record["_id"] = str(record["_id"])
+        # Ensure times are sent as strings
+        if isinstance(record.get("checkInTime"), datetime):
+            record["checkInTime"] = record["checkInTime"].isoformat()
+        if isinstance(record.get("checkOutTime"), datetime):
+            record["checkOutTime"] = record["checkOutTime"].isoformat()
         records.append(record)
     return jsonify(records), 200
 
