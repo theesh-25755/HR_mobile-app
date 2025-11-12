@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class ApiService {
   // Use 10.0.2.2 for Android Emulator to connect to localhost
   // Use http://localhost:5000 (or 5001) for Chrome
-  static const String _baseUrl = "http://localhost:5000";
+  static const String _baseUrl = "https://my-hrms-backend.onrender.com";
 
   // Handles the /login route
   static Future<Map<String, dynamic>> login(String email, String password) async {
