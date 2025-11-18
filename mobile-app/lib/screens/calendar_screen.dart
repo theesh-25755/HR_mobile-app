@@ -1,6 +1,6 @@
 // lib/screens/calendar_screen.dart
 
-import 'dart:ui'; // <-- ADDED for ImageFilter
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -64,8 +64,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final _titleController = TextEditingController();
     final _descController = TextEditingController();
     
-    DateTime? _startDate = _selectedDay ?? DateTime.now();
-    DateTime? _endDate = _selectedDay ?? DateTime.now();
+    // --- THIS IS THE FIX (PART 3) ---
+    // Start with dates in UTC
+    DateTime _startDate = DateTime.utc(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
+    DateTime _endDate = DateTime.utc(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
+    // --- END FIX ---
+    
     String _eventType = 'event';
     bool _isSaving = false;
 
@@ -119,7 +123,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           );
                           if (date != null) {
                             setDialogState(() {
-                              _startDate = date;
+                              // --- FIX: Store as UTC ---
+                              _startDate = DateTime.utc(date.year, date.month, date.day);
                               if (_endDate!.isBefore(_startDate!)) {
                                 _endDate = _startDate;
                               }
@@ -140,7 +145,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           );
                           if (date != null) {
                             setDialogState(() {
-                              _endDate = date;
+                              // --- FIX: Store as UTC ---
+                              _endDate = DateTime.utc(date.year, date.month, date.day);
                             });
                           }
                         },
@@ -169,8 +175,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         await calendarProvider.addEvent(token!, {
                           "title": _titleController.text,
                           "description": _descController.text,
-                          "startDate": _startDate,
-                          "endDate": _endDate,
+                          "startDate": _startDate, // This is now a UTC DateTime
+                          "endDate": _endDate,     // This is now a UTC DateTime
                           "eventType": _eventType,
                         });
                         
@@ -209,7 +215,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final isHR = authProvider.user?['role'] == 'hr_manager' || authProvider.user?['role'] == 'super_admin';
 
     return Scaffold(
-      // --- MODIFICATIONS FOR FROSTED GLASS ---
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Office Calendar'),
@@ -218,7 +223,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         elevation: 0,
       ),
       backgroundColor: Colors.transparent,
-      // --- END MODIFICATIONS ---
       
       body: Stack(
         children: [
@@ -236,7 +240,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           SafeArea(
             child: Column(
               children: [
-                // --- CALENDAR IS NOW WRAPPED IN FROSTED GLASS ---
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: BackdropFilter(
@@ -258,7 +261,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         eventLoader: (day) {
                           return calendarProvider.eventMap[DateTime.utc(day.year, day.month, day.day)] ?? [];
                         },
-                        // --- STYLES UPDATED TO BE READABLE (DARK TEXT) ---
                         calendarStyle: CalendarStyle(
                           markerDecoration: BoxDecoration(
                             color: Colors.red.shade700,
@@ -287,7 +289,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           weekdayStyle: const TextStyle(color: Colors.black54),
                           weekendStyle: TextStyle(color: Colors.red.shade900),
                         ),
-                        // --- END STYLE UPDATES ---
                         onPageChanged: (focusedDay) {
                           _focusedDay = focusedDay;
                         },
@@ -296,7 +297,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                 ),
                 
-                // --- EVENT LIST TITLE ---
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.0),
                   child: Row(
@@ -312,7 +312,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
                 const SizedBox(height: 8),
 
-                // --- EVENT LIST IS NOW WRAPPED IN FROSTED GLASS ---
                 Expanded(
                   child: ClipRRect(
                     borderRadius: const BorderRadius.only(
@@ -337,7 +336,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               return const Center(
                                 child: Text(
                                   'No events for this day.',
-                                  style: TextStyle(color: Colors.black87), // <-- CHANGED
+                                  style: TextStyle(color: Colors.black87),
                                 ),
                               );
                             }
@@ -372,12 +371,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  // --- MODIFIED EVENT TILE HELPER ---
   Widget _buildEventTile(Map<String, dynamic> event) {
     bool isHoliday = event['eventType'] == 'holiday';
     return Card(
       elevation: 0,
-      color: Colors.white.withOpacity(0.7), // Make list tiles slightly transparent
+      color: Colors.white.withOpacity(0.7),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       child: ListTile(

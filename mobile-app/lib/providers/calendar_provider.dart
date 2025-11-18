@@ -33,35 +33,38 @@ class CalendarProvider with ChangeNotifier {
     notifyListeners();
   }
   
-  // --- NEW FUNCTION TO ADD EVENTS ---
   Future<void> addEvent(String token, Map<String, dynamic> eventData) async {
     _isLoading = true;
     notifyListeners();
     try {
-      // Convert DateTime objects to ISO 8601 strings for the API
+      // --- THIS IS THE FIX (PART 1) ---
+      // We now receive UTC dates, so we just format them.
       eventData['startDate'] = (eventData['startDate'] as DateTime).toIso8601String();
       eventData['endDate'] = (eventData['endDate'] as DateTime).toIso8601String();
+      // --- END FIX ---
 
       await ApiService.createEvent(token, eventData);
       
-      // After successfully adding, refresh the event list
       await fetchEvents(token);
     } catch (e) {
-      // If it fails, stop loading and re-throw the error
       _isLoading = false;
       notifyListeners();
       throw e;
     }
-    // fetchEvents() will set isLoading to false and notify listeners on success
   }
-  // --- END NEW FUNCTION ---
 
   void _processEvents() {
     _eventMap.clear();
     for (final event in _events) {
       try {
-        final startDate = DateTime.parse(event['startDate']).toUtc();
-        final dateKey = DateTime.utc(startDate.year, startDate.month, startDate.day);
+        // --- THIS IS THE FIX (PART 2) ---
+        // Parse the UTC string, and convert it to the phone's local time
+        final localStartDate = DateTime.parse(event['startDate']).toLocal();
+        
+        // Use the local date parts (year, month, day) to create the UTC key
+        // This ensures Nov 29 (UTC) becomes Nov 30 (Local)
+        final dateKey = DateTime.utc(localStartDate.year, localStartDate.month, localStartDate.day);
+        // --- END FIX ---
 
         if (_eventMap[dateKey] == null) {
           _eventMap[dateKey] = [];
